@@ -9,5 +9,5 @@ maintainers:
     email: avinash@coredge.io
 dependencies:
   - name: psmdb-operator
-    version: "1.14.0"
+    version: "1.14.3"
     repository: file://psmdb-operator
