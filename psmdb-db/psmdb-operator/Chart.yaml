@@ -1,0 +1,13 @@
+apiVersion: v2
+appVersion: "1.14.0"
+description: A Helm chart for deploying the Percona Operator for MongoDB
+name: psmdb-operator
+home: https://docs.percona.com/percona-operator-for-mongodb/
+version: 1.14.3
+maintainers:
+  - name: Avinash Rai
+    email: avinash@coredge.io
+dependencies:
+  - name: psmdb-db
+    version: "1.14.3"
+    repository: file://psmdb-db

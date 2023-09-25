@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "mongodb-cluster-ready"
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": post-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: mongodb-psmdb-operator
+      containers:
+      - name: mongodb-cluster-readiness
+        image: coredgeio/kubectl:1.18.16
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          i=0
+          while [ $i -ne 120 ]; do
+            i=$(($i+1))
+            sleep 50
+            kubectl get all -n mongodb | grep "Running\|0/"
+            if [ $? == "1" ]; then
+              exit 0
+            fi
+            echo "Waiting for MongoDB cluster to be ready!"
+          done
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "mongodb-cluster-cleanup"
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: mongodb-psmdb-operator
+      containers:
+      - name: mongodb-cluster-cleanup
+        image: coredgeio/kubectl:1.18.16
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          i=0
+          while [ $i -ne 40 ]; do
+            i=$(($i+1))
+            kubectl delete perconaservermongodbs -n {{ .Release.Namespace }} mongodb-psmdb-db --ignore-not-found=true
+            output=$(kubectl get pod -n {{ .Release.Namespace }} --selector=name=percona-server-mongodb --field-selector status.phase=Running | wc -l)            
+            if [ "$output" == "0" ]; then
+              echo "mongodb cluster cleanup success!"
+              exit 0
+            fi
+            echo "Waiting for mongodb cluster cleanup!"
+            sleep 5
+          done
